@@ -214,6 +214,23 @@ static inline void khrIcdOsDirEnumerate(char *path, char *env, const char *exten
 void khrIcdOsVendorsEnumerate(void)
 {
     khrIcdInitializeTrace();
+
+#ifdef __x86_64__
+    // First look in the HFS directory for the Intel CPU driver.
+    char *ocllib = "/dsolib/libintelocl.so";
+    char *hfs = getenv("HFS");
+    // If HOUDINI_USE_HFS_OCL==0, avoid loading the library altogether.
+    char *usehfs = getenv("HOUDINI_USE_HFS_OCL");
+    if (hfs && (!usehfs || atoi(usehfs)))
+    {
+        KHR_ICD_TRACE("Adding built-in HFS OpenCL CPU driver.\n");
+        char *oclpath = malloc(strlen(hfs) + strlen(ocllib) + 1);
+        sprintf(oclpath, "%s%s", hfs, ocllib);
+        khrIcdVendorAdd(oclpath);
+        free(oclpath);
+    }
+#endif
+
     khrIcdVendorsEnumerateEnv();
 
     khrIcdOsDirEnumerate(ICD_VENDOR_PATH, "OCL_ICD_VENDORS", ".icd", khrIcdVendorAdd, 0);

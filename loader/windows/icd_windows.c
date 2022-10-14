@@ -192,6 +192,40 @@ BOOL CALLBACK khrIcdOsVendorsEnumerate(PINIT_ONCE InitOnce, PVOID Parameter, PVO
     DWORD dwIndex;
 
     khrIcdInitializeTrace();
+
+    char hfs[4096], usehfsocl[10];
+    if (GetEnvironmentVariable("HFS", hfs, 4096) &&
+        (!GetEnvironmentVariable("HOUDINI_USE_HFS_OCL", usehfsocl, 10) || atoi(usehfsocl)))
+    {
+        KHR_ICD_TRACE("Adding built-in HFS OpenCL CPU driver.\n");
+        DWORD prevlen;
+        char prevdlldir[4096];
+        const char *ocldir = "\\bin\\OpenCL\\bin\\x64";
+        const char *ocldll = "Intelocl64.dll";
+        char *h = hfs;
+        char *oclpath = (char *)malloc(strlen(hfs) + strlen(ocldir) + 1);
+        // Replace forward slashes with backwards.
+        while(*h)
+        {
+            if (*h == '/')
+                *h = '\\';
+            h++;
+        }
+        sprintf(oclpath, "%s%s", hfs, ocldir);
+        // Save previous DLL directory.
+        prevlen = GetDllDirectory(4096, prevdlldir);
+        if (SetDllDirectory(oclpath))
+        {
+            khrIcdVendorAdd(ocldll);
+        }
+        // Restore previous DLL directory.
+        if (prevlen)
+            SetDllDirectory(prevdlldir);
+        else
+            SetDllDirectory(NULL);
+        free(oclpath);
+    }
+
     khrIcdVendorsEnumerateEnv();
 
     currentStatus = khrIcdOsVendorsEnumerateDXGK();
